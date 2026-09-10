@@ -1,48 +1,36 @@
-# state/state_store.py
 import json
-from pathlib import Path
+import os
+from datetime import datetime, timezone
 
-STATE_FILE = Path(__file__).parent / "state.json"
+STATE_FILE = "state/state.json"
 
 
 class StateStore:
-    """Remembers which signals have already been alerted, so each
-    candle fires at most one alert per strategy."""
-
-    def __init__(self):
+    def __init__(self, path: str = STATE_FILE):
+        self.path = path
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         self._data = {}
-        if STATE_FILE.exists():
+        if os.path.exists(path):
             try:
-                self._data = json.loads(STATE_FILE.read_text())
-            except (json.JSONDecodeError, OSError):
+                with open(path) as f:
+                    self._data = json.load(f)
+            except Exception:
                 self._data = {}
 
-    def already_alerted(self, key: str, timestamp) -> bool:
-        # Accepts both list (new format) and string (old format) entries
+    def already_alerted(self, key: str, ts) -> bool:
         entry = self._data.get(key)
-        if entry is None:
+        if not entry:
             return False
-        if isinstance(entry, list):
-            return str(timestamp) in entry
-        return str(timestamp) == str(entry)
+        return str(ts) <= entry.get("last_ts", "")
 
-    def mark_alerted(self, key: str, timestamp) -> None:
-        entry = self._data.get(key)
-        if entry is None:
-            entry = []
-        elif isinstance(entry, str):
-            entry = [entry]          # migrate old single-string format
-        elif isinstance(entry, list):
-            pass
-        else:
-            entry = []
+    def mark_alerted(self, key: str, ts):
+        self._data[key] = {"last_ts": str(ts),
+                           "updated": datetime.now(timezone.utc).isoformat()}
+        self._save()
 
-        ts = str(timestamp)
-        if ts not in entry:
-            entry.append(ts)
-
-        # Keep only the most recent 50 timestamps per key (prevents
-        # the file growing forever)
-        entry = sorted(entry)[-50:]
-        self._data[key] = entry
-        STATE_FILE.write_text(json.dumps(self._data, indent=2))
+    def _save(self):
+        try:
+            with open(self.path, "w") as f:
+                json.dump(self._data, f, indent=2)
+        except Exception as e:
+            log.warning(f"state save failed: {e}")
