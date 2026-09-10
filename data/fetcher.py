@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 import ccxt
 
 log = logging.getLogger(__name__)
@@ -24,9 +25,9 @@ class OHLCVFetcher:
         return _clients[self.exchange_id]
 
     def fetch_ohlcv(self, symbol: str, timeframe: str, limit: int = 200):
-        o = self._client.amount_to_precision(symbol, 0)  # touch markets to validate
+        if symbol not in self._client.markets:
+            raise ValueError(f"unknown symbol {symbol} on {self.exchange_id}")
         rows = self._client.fetch_ohlcv(symbol, timeframe, limit=limit)
-        import pandas as pd
         df = pd.DataFrame(rows, columns=["timestamp", "open", "high", "low", "close", "volume"])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
         log.info(f"Fetched {len(df)} bars: {symbol} {timeframe} from {self.exchange_id}")
