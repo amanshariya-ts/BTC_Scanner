@@ -1,14 +1,6 @@
-exchange:
-  name: binanceusdm
-  api_key: ""
-  secret: ""
-
-# Every market (symbol + timeframe combo) to watch in parallel
-markets:
-  - symbol: "BTC/USDT:USDT"
-    timeframe: "5m"
-  - symbol: "BTC/USDT:USDT"
-    timeframe: "30m"
+polling:
+  interval_seconds: 60
+  lookback_bars: 200
 
 strategies:
   - name: liquidity_pinbars
@@ -20,9 +12,15 @@ strategies:
 
 alerts:
   telegram:
-    bot_token: "PLACEHOLDER_TOKEN"
-    chat_id: "PLACEHOLDER_CHAT_ID"
+    bot_token: ""    # filled from env in Actions
+    chat_id: ""
 
-polling:
-  interval_seconds: 5
-  lookback_bars: 200
+markets:
+  - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "okx" }
+  - { symbol: "BTC/USDT:USDT", timeframe: "5m",  exchange: "okx" }
+  - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "kucoin" }
+  - { symbol: "BTC/USDT:USDT", timeframe: "5m",  exchange: "kucoinfutures" }
+  - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "gate" }
+  - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "bitget" }
+  - { symbol: "BTC/USDT",      timeframe: "30m", exchange: "okx" }
+  - { symbol: "BTC/USDT:USDT", timeframe: "30m", exchange: "okx" }
