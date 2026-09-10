@@ -30,6 +30,5 @@ class TelegramAlert:
     def send(self, signal) -> bool:
         arrow = "🟢 BUY" if signal.side == "buy" else "🔴 SELL"
         text = (f"{arrow} pinbar — {signal.symbol} [{signal.timeframe}]\n"
-                f"Price: {signal.price:.2f}\n"
-                f"Strategy: {signal.strategy}")
+                
         return self.send_text(text)
