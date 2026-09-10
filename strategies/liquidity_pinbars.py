@@ -1,4 +1,3 @@
-# strategies/liquidity_pinbars.py
 """
 Exact Python replication of the TradingView Pine Script v6 indicator:
 "Liquidity Pin Bars (Bullish & Bearish)"
@@ -35,9 +34,9 @@ class LiquidityPinBars(StrategyBase):
 
     def evaluate(self, df: pd.DataFrame) -> Signal | None:
         p = self.params
-        ema_length     = p.get("ema_length", 9)
+        ema_length      = p.get("ema_length", 9)
         body_size_ratio = p.get("body_size_ratio", 0.3)
-        wick_ratio     = p.get("wick_ratio", 2.0)
+        wick_ratio      = p.get("wick_ratio", 2.0)
 
         # --- EMA (ta.ema equivalent) ---
         ema_series = ema(df["close"], ema_length)
@@ -57,12 +56,12 @@ class LiquidityPinBars(StrategyBase):
         # --- Common condition ---
         small_body = candle_range > 0 and (body_size / candle_range) < body_size_ratio
 
-        # --- Bullish Liquidity Pin Bar (red candle, long LOWER wick) ---
+        # --- Bullish Liquidity Pin Bar (RED candle, long LOWER wick, close below EMA) ---
         long_lower_wick = lower_wick > (wick_ratio * body_size)
         close_below_ema = c.close < e
         bullish = is_red and small_body and long_lower_wick and close_below_ema
 
-        # --- Bearish Liquidity Pin Bar (green candle, long UPPER wick) ---
+        # --- Bearish Liquidity Pin Bar (GREEN candle, long UPPER wick, close above EMA) ---
         long_upper_wick = upper_wick > (wick_ratio * body_size)
         close_above_ema = c.close > e
         bearish = is_green and small_body and long_upper_wick and close_above_ema
