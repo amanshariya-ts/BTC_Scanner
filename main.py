@@ -1,4 +1,4 @@
-# main.py
+# main.py — original watcher architecture, per-market exchange support
 import logging
 import time
 import threading
@@ -28,13 +28,18 @@ def build_strategies(symbol, timeframe, strategy_cfgs):
     return strategies
 
 
-def run_market(cfg, fetcher, tg, state, symbol, timeframe):
-    """One independent watcher per symbol+timeframe. Runs in its own thread."""
+def run_market(cfg, tg, state, market):
+    """One independent watcher per market. Runs in its own thread."""
+    symbol = market["symbol"]
+    timeframe = market["timeframe"]
+    exchange = market["exchange"]          # ← per-feed exchange from config
+
+    fetcher = OHLCVFetcher(exchange)
     strategies = build_strategies(symbol, timeframe, cfg["strategies"])
     poller = CandlePoller(fetcher, symbol, timeframe,
                           interval=cfg["polling"]["interval_seconds"],
                           lookback=cfg["polling"]["lookback_bars"])
-    log.info(f"[{symbol} {timeframe}] watching with {len(strategies)} strategy/ies")
+    log.info(f"[{symbol} {timeframe} @ {exchange}] watching with {len(strategies)} strategy/ies")
 
     for candle in poller.poll_forever():
         try:
@@ -43,22 +48,21 @@ def run_market(cfg, fetcher, tg, state, symbol, timeframe):
             for strat in strategies:
                 signal = strat.evaluate(df)
                 if signal is None:
-                    continue  # No-signal candle: silently ignored
-                key = f"{signal.symbol}|{signal.timeframe}|{strat.name}"
+                    continue
+                key = f"{exchange}|{signal.symbol}|{signal.timeframe}|{strat.name}"
                 if state.already_alerted(key, signal.timestamp):
                     continue
                 signal.strategy = strat.name
                 log.info(f"SIGNAL: {signal.side} {signal.symbol} "
-                         f"{signal.timeframe} @ {signal.price}")
+                         f"{signal.timeframe} @ {signal.price} [{exchange}]")
                 tg.send(signal)
                 state.mark_alerted(key, signal.timestamp)
         except Exception as e:
-            log.error(f"[{symbol} {timeframe}] loop error: {e}")
+            log.error(f"[{symbol} {timeframe} @ {exchange}] loop error: {e}")
 
 
 def main():
     cfg = load_config()
-    fetcher = OHLCVFetcher(cfg["exchange"]["name"])
     tg = TelegramAlert(cfg["alerts"]["telegram"]["bot_token"],
                        cfg["alerts"]["telegram"]["chat_id"])
     state = StateStore()
@@ -67,8 +71,7 @@ def main():
     for market in cfg["markets"]:
         t = threading.Thread(
             target=run_market,
-            args=(cfg, fetcher, tg, state,
-                  market["symbol"], market["timeframe"]),
+            args=(cfg, tg, state, market),
             daemon=True,
         )
         t.start()
