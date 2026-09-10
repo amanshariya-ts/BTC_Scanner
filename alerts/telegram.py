@@ -1,37 +1,35 @@
-# alerts/telegram.py
-import requests
 import logging
-import os
+import requests
 
 log = logging.getLogger(__name__)
 
+
 class TelegramAlert:
-    def __init__(self, bot_token: str, chat_id: str):
-        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", bot_token)
-        chat_id = os.environ.get("TELEGRAM_CHAT_ID", chat_id)
-        self.url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        self.chat_id = chat_id
+    def __init__(self, bot_token: str = "", chat_id: str = ""):
+        self.bot_token = bot_token or ""
+        self.chat_id = chat_id or ""
 
-    def send(self, signal) -> None:
-        ts = signal.timestamp.strftime("%Y-%m-%d %H:%M UTC")
-        if signal.side == "BUY":
-            header = "🟢 Bullish Liq_Cron"
-        else:
-            header = "🔴 Bearish Liq_Cron"
-
-        msg = (
-            f"{header}\n"
-            f"Symbol: {signal.symbol}\n"
-            f"Timeframe: {signal.timeframe}\n"
-              )
+    def send_text(self, text: str) -> bool:
+        if not self.bot_token or not self.chat_id:
+            log.warning("Telegram not configured — skipping send")
+            return False
         try:
-            r = requests.post(self.url, json={
-                "chat_id": self.chat_id,
-                "text": msg,
-            }, timeout=10)
-            r.raise_for_status()
+            resp = requests.post(
+                f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
+                json={"chat_id": self.chat_id, "text": text},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                return True
+            log.warning(f"Telegram HTTP {resp.status_code}: {resp.text[:200]}")
+            return False
         except Exception as e:
-            log.error(f"Telegram send failed: {e}")
+            log.warning(f"Telegram send failed: {e}")
+            return False
 
-        # send() is only ever called with a real Signal object.
-        # "No signal" bars return None in the strategy and never get here.
+    def send(self, signal) -> bool:
+        arrow = "🟢 BUY" if signal.side == "buy" else "🔴 SELL"
+        text = (f"{arrow} pinbar — {signal.symbol} [{signal.timeframe}]\n"
+                f"Price: {signal.price:.2f}\n"
+                f"Strategy: {signal.strategy}")
+        return self.send_text(text)
