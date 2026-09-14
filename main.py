@@ -1,4 +1,4 @@
-# main.py — original watcher architecture, per-market exchange support
+# main.py
 import logging
 import time
 import threading
@@ -8,6 +8,7 @@ from data.fetcher import OHLCVFetcher
 from data.candle_poller import CandlePoller
 from strategies.liquidity_pinbars import LiquidityPinBars
 from alerts.telegram import TelegramAlert
+from alerts.aggregator import SignalAggregator
 from state.state_store import StateStore
 
 logging.basicConfig(level=logging.INFO,
@@ -28,11 +29,11 @@ def build_strategies(symbol, timeframe, strategy_cfgs):
     return strategies
 
 
-def run_market(cfg, tg, state, market):
+def run_market(cfg, agg, state, market):
     """One independent watcher per market. Runs in its own thread."""
     symbol = market["symbol"]
     timeframe = market["timeframe"]
-    exchange = market["exchange"]          # ← per-feed exchange from config
+    exchange = market["exchange"]
 
     fetcher = OHLCVFetcher(exchange)
     strategies = build_strategies(symbol, timeframe, cfg["strategies"])
@@ -55,7 +56,7 @@ def run_market(cfg, tg, state, market):
                 signal.strategy = strat.name
                 log.info(f"SIGNAL: {signal.side} {signal.symbol} "
                          f"{signal.timeframe} @ {signal.price} [{exchange}]")
-                tg.send(signal)
+                agg.submit(signal, exchange)
                 state.mark_alerted(key, signal.timestamp)
         except Exception as e:
             log.error(f"[{symbol} {timeframe} @ {exchange}] loop error: {e}")
@@ -67,11 +68,14 @@ def main():
                        cfg["alerts"]["telegram"]["chat_id"])
     state = StateStore()
 
+    agg = SignalAggregator(tg)
+    agg.start()
+
     threads = []
     for market in cfg["markets"]:
         t = threading.Thread(
             target=run_market,
-            args=(cfg, tg, state, market),
+            args=(cfg, agg, state, market),
             daemon=True,
         )
         t.start()
