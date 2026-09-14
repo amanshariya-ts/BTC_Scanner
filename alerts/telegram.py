@@ -1,66 +1,44 @@
-# alerts/aggregator.py
+# alerts/telegram.py
 import logging
-import threading
-import queue
-import time
+
+import requests
 
 log = logging.getLogger(__name__)
 
-FLUSH_INTERVAL = 20      # seconds between flush checks
-BATCH_WINDOW = 75        # alerts older than this get flushed
 
+class TelegramAlert:
+    """Sends alerts to Telegram via Bot API."""
 
-class SignalAggregator:
-    """Collects signals from market threads and sends one grouped
-    Telegram message per (side, symbol, timeframe) batch."""
+    def __init__(self, bot_token: str = "", chat_id: str = ""):
+        self.bot_token = bot_token or ""
+        self.chat_id = chat_id or ""
 
-    def __init__(self, telegram):
-        self.q = queue.Queue()
-        self.tg = telegram
-        self._buffer = []          # list of signal dicts
-        self._lock = threading.Lock()
+    def send_text(self, text: str) -> bool:
+        """Send a plain text message. Returns True on success."""
+        if not self.bot_token or not self.chat_id:
+            log.warning("Telegram not configured — skipping send")
+            return False
+        try:
+            resp = requests.post(
+                "https://api.telegram.org/bot" + self.bot_token + "/sendMessage",
+                json={"chat_id": self.chat_id, "text": text},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                return True
+            log.warning("Telegram HTTP %s: %s", resp.status_code, resp.text[:200])
+            return False
+        except Exception as e:
+            log.warning("Telegram send failed: %s", e)
+            return False
 
-    def submit(self, signal, exchange):
-        self.q.put({"exchange": exchange, "signal": signal})
-
-    def start(self):
-        t = threading.Thread(target=self._run, daemon=True)
-        t.start()
-        log.info("Aggregator started")
-        return t
-
-    def _run(self):
-        while True:
-            time.sleep(FLUSH_INTERVAL)
-            try:
-                # drain queue into buffer
-                while True:
-                    self._buffer.append(self.q.get_nowait())
-            except queue.Empty:
-                pass
-
-            if not self._buffer:
-                continue
-
-            with self._lock:
-                batch = self._buffer
-                self._buffer = []
-
-            groups = {}
-            for item in batch:
-                s = item["signal"]
-                key = (s.side.upper(), s.symbol, s.timeframe)
-                groups.setdefault(key, []).append(item)
-
-            for (side, symbol, timeframe), items in groups.items():
-                venues = [it["exchange"] for it in items]
-                prices = [it["signal"].price for it in items]
-                arrow = "🟢 BUY" if side == "BUY" else "🔴 SELL"
-                text = (f"{arrow} pinbar — {symbol} [{timeframe}]\n"
-                        f"Confirmed by {len(items)} feed(s): "
-                        f"{', '.join(sorted(venues))}\n"
-                        f"Price range: {min(prices):.2f} – {max(prices):.2f}\n"
-                        f"Strategy: liquidity_pinbars")
-                log.info(f"ALERT(grouped): {side} {symbol} {timeframe} "
-                         f"via {venues}")
-                self.tg.send_text(text)
+    def send(self, signal) -> bool:
+        """Send a formatted message for a signal object."""
+        arrow = "🟢 BUY" if signal.side.upper() == "BUY" else "🔴 SELL"
+        text = arrow + " pinbar — " + signal.symbol + " [" + signal.timeframe + "]"
+        if getattr(signal, "exchange", ""):
+            text += " @ " + signal.exchange
+        text += "\nPrice: " + f"{signal.price:.2f}"
+        if getattr(signal, "strategy", ""):
+            text += "\nStrategy: " + signal.strategy
+        return self.send_text(text)
