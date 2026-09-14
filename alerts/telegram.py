@@ -1,4 +1,6 @@
+# alerts/telegram.py
 import logging
+
 import requests
 
 log = logging.getLogger(__name__)
@@ -28,7 +30,9 @@ class TelegramAlert:
             return False
 
     def send(self, signal) -> bool:
-        arrow = "🟢" if signal.side == "buy" else "🔴"
-        text = (f"{arrow} pinbar — {signal.symbol} [{signal.timeframe}]\n"
-                
+        arrow = "🟢 BUY" if signal.side.upper() == "BUY" else "🔴 SELL"
+        text = arrow + " pinbar — " + signal.symbol + " [" + signal.timeframe + "]"
+        text += "\nPrice: " + f"{signal.price:.2f}"
+        if getattr(signal, "strategy", ""):
+            text += "\nStrategy: " + signal.strategy
         return self.send_text(text)
