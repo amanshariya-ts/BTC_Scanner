@@ -18,13 +18,5 @@ alerts:
 markets:
   - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "okx" }
   - { symbol: "BTC/USDT:USDT", timeframe: "5m",  exchange: "okx" }
-  - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "kucoin" }
-  - { symbol: "BTC/USDT:USDT", timeframe: "5m",  exchange: "kucoinfutures" }
-  - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "gate" }
-  - { symbol: "BTC/USDT",      timeframe: "5m",  exchange: "bitget" }
   - { symbol: "BTC/USDT",      timeframe: "30m", exchange: "okx" }
   - { symbol: "BTC/USDT:USDT", timeframe: "30m", exchange: "okx" }
-  - { symbol: "BTC/USDT",      timeframe: "30m",  exchange: "kucoin" }
-  - { symbol: "BTC/USDT:USDT", timeframe: "30m",  exchange: "kucoinfutures" }
-  - { symbol: "BTC/USDT",      timeframe: "30m",  exchange: "gate" }
-  - { symbol: "BTC/USDT",      timeframe: "30m",  exchange: "bitget" }
