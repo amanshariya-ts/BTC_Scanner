@@ -8,7 +8,7 @@ class CandlePoller:
     """Yields every time a new candle closes for the given symbol/timeframe."""
 
     def __init__(self, fetcher, symbol: str, timeframe: str,
-                 interval: int = 60, lookback: int = 200):
+                 interval: int = 300, lookback: int = 200):
         self.fetcher = fetcher
         self.symbol = symbol
         self.timeframe = timeframe
