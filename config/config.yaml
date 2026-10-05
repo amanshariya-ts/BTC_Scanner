@@ -1,5 +1,5 @@
 polling:
-  interval_seconds: 180
+  interval_seconds: 300
   lookback_bars: 200
 
 strategies:
