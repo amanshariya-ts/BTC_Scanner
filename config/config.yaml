@@ -18,5 +18,4 @@ alerts:
 markets:
   - { symbol: "BTC/USDT",      timeframe: "30m", exchange: "okx" }
   - { symbol: "BTC/USDT",      timeframe: "1h", exchange: "okx" }
-  - { symbol: "ETH/USDT",      timeframe: "30m", exchange: "okx" }
-  - { symbol: "ETH/USDT",      timeframe: "1h", exchange: "okx" }
+  - { symbol: "BTC/USDT",      timeframe: "3h", exchange: "okx" }
