@@ -1,5 +1,5 @@
 polling:
-  interval_seconds: 300
+  interval_seconds: 600
   lookback_bars: 200
 
 strategies:
@@ -18,4 +18,3 @@ alerts:
 markets:
   - { symbol: "BTC/USDT",      timeframe: "30m", exchange: "okx" }
   - { symbol: "BTC/USDT",      timeframe: "1h", exchange: "okx" }
-  - { symbol: "BTC/USDT",      timeframe: "3h", exchange: "okx" }
